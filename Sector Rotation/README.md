@@ -1,7 +1,9 @@
 # Investment-Strategies
 
 This strategy implements Marc Faber's Sector Rotation strategy.
- 
+
+Sector ETF's used: SPY, XLB, XLE, XLF, XLI, XLK, XLP, XLU, XLV, XLY
+
 Sector Rotation based trading strategies are popular because they can 
 improve risk-adjusted returns and automate the investing process. Momentum 
 investing, which is at the heart of the sector rotation strategy, seeks to 
