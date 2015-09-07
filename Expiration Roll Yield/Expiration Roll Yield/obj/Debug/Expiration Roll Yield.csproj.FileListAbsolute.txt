@@ -1,0 +1,6 @@
+c:\users\yezen\documents\visual studio 2012\Projects\Expiration Roll Yield\Expiration Roll Yield\bin\Debug\Expiration Roll Yield.exe.config
+C:\Users\Yezen\documents\visual studio 2012\Projects\Expiration Roll Yield\Expiration Roll Yield\bin\Debug\Expiration Roll Yield.exe
+C:\Users\Yezen\documents\visual studio 2012\Projects\Expiration Roll Yield\Expiration Roll Yield\bin\Debug\Expiration Roll Yield.pdb
+C:\Users\Yezen\documents\visual studio 2012\Projects\Expiration Roll Yield\Expiration Roll Yield\obj\Debug\Expiration Roll Yield.csprojResolveAssemblyReference.cache
+C:\Users\Yezen\documents\visual studio 2012\Projects\Expiration Roll Yield\Expiration Roll Yield\obj\Debug\Expiration Roll Yield.exe
+C:\Users\Yezen\documents\visual studio 2012\Projects\Expiration Roll Yield\Expiration Roll Yield\obj\Debug\Expiration Roll Yield.pdb
