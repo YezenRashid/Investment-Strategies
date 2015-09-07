@@ -16,4 +16,4 @@ Sell Signal: Exit all positions when the S&P 500 moves below its 10-month simple
 
 Rebalance: Once per month, sell sectors that fall out of the top tier (three) and buy the sectors that move into the top tier (three).
 
-Source for strategy can be found at http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:sector_rotation_roc.
+Source for strategy guidelines can be found at http://stockcharts.com/school/doku.php?id=chart_school:trading_strategies:sector_rotation_roc.
