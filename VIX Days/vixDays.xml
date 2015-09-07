@@ -1,0 +1,103 @@
+<?xml version="1.0"?>
+<Strategy xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Name>vixDays</Name>
+  <ID>53abbc1b-285e-4c8c-a1dd-fb9127cf71b4</ID>
+  <Code>using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Drawing;
+using WealthLab;
+using WealthLab.Indicators;
+
+namespace WealthLab.Strategies {
+	public class Doroob: WealthScript {
+		StrategyParameter line;
+		StrategyParameter minDays;
+		
+		public Doroob()
+		{
+			line = CreateParameter("Line", 27, 20, 50, 1);
+			minDays = CreateParameter("Min Days", 2, 2, 40, 1);
+		}
+
+		protected override void Execute()
+		{
+			DateTime startDate = Date[0];
+			int consequetiveDays = 0;
+			bool started = false;
+			DrawLabel(PricePane,"Here is a list of dates where VIX closed above: " + line.Value + " for more than: " + minDays.Value + " days"); 
+			for (int bar = 0; bar &lt; Bars.Count; bar++)
+			{	
+				if(Close[bar] &gt; line.Value)
+				{
+					consequetiveDays++;
+					if(!started)
+					{
+						startDate = Date[bar];
+						started = true;
+					}
+				}
+				if(started &amp;&amp; (Close[bar] &lt; line.Value || bar == Bars.Count - 1))
+				{
+					if(consequetiveDays &gt; minDays.Value)
+					{
+						DrawLabel(PricePane,"Number of days: " + consequetiveDays + "\t Start: " + startDate.ToShortDateString() + 	"\t End: " + Date[bar].ToShortDateString() + "\n");
+					}					
+					started = false;
+					consequetiveDays = 0;
+				}				
+			}
+		}
+	}
+}</Code>
+  <Description />
+  <Author>Local</Author>
+  <CreationDate>2015-09-06T13:49:32.1611575-07:00</CreationDate>
+  <LastModified>2015-09-06T18:14:39.9688774-07:00</LastModified>
+  <StrategyType>Script</StrategyType>
+  <AccountNumber />
+  <NetworkDrivePath />
+  <ParameterValues>
+    <double>27</double>
+    <double>1</double>
+  </ParameterValues>
+  <DataSetName>YellowPalace</DataSetName>
+  <Symbol>VIX</Symbol>
+  <DataScale>
+    <Scale>Minute</Scale>
+    <BarInterval>30</BarInterval>
+  </DataScale>
+  <PositionSize>
+    <Mode>PctEquity</Mode>
+    <RawProfitDollarSize>5000</RawProfitDollarSize>
+    <RawProfitShareSize>100</RawProfitShareSize>
+    <StartingCapital>1000000</StartingCapital>
+    <DollarSize>5000</DollarSize>
+    <ShareSize>100</ShareSize>
+    <PctSize>32</PctSize>
+    <RiskSize>3</RiskSize>
+    <SimuScriptName />
+    <PosSizerConfig />
+    <MarginFactor>1</MarginFactor>
+    <OverrideShareSize>0</OverrideShareSize>
+  </PositionSize>
+  <DataRange>
+    <Range>RecentYears</Range>
+    <StartDate>2007-01-01T00:00:00</StartDate>
+    <EndDate>2015-12-31T00:00:00</EndDate>
+    <FixedBars>500</FixedBars>
+    <RecentValue>10</RecentValue>
+    <IsStreaming>false</IsStreaming>
+  </DataRange>
+  <Indicators>AAAAAAAAAAA=</Indicators>
+  <Rules />
+  <SinglePosition>true</SinglePosition>
+  <References />
+  <PreferredValues />
+  <UsePreferredValues>false</UsePreferredValues>
+  <StartingEquity>100000</StartingEquity>
+  <MarginFactor>1</MarginFactor>
+  <PanelSize />
+  <Origin />
+  <CombinedStrategyChildren />
+</Strategy>

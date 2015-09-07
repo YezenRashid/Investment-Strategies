@@ -1,0 +1,216 @@
+<?xml version="1.0"?>
+<Strategy xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Name>SectorRotation</Name>
+  <ID>6c1eb579-f88e-421d-9838-0a7fe6fb62ef</ID>
+  <Code>using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Drawing;
+using WealthLab;
+using WealthLab.Indicators;
+using System.Collections;
+using System.IO;
+
+namespace WealthLab.Strategies
+{
+	public class MyStrategy : WealthScript
+	{
+		protected override void Execute()
+		{
+			int days = 250;
+			int timeFrame = 66; // 3 months	
+			int month = -1;
+			
+			SMA smaYear = SMA.Series(Close, days);
+			PlotSeries(PricePane, smaYear, Color.Red, WealthLab.LineStyle.Solid, 2);
+			
+			DrawLine(PricePane, 7, Close[7], 35, Close[35], Color.Red, LineStyle.Solid, 3);
+			DrawLine(PricePane, 36, Close[36], 66, Close[66], Color.Green, LineStyle.Solid, 3);
+			DrawLine(PricePane, 67, Close[67], 97, Close[97], Color.Red, LineStyle.Solid, 3);
+			DrawLine(PricePane, 98, Close[98], 128, Close[128], Color.Green, LineStyle.Solid, 3);
+			DrawLine(PricePane, 129, Close[129], 159, Close[159], Color.Red, LineStyle.Solid, 3);
+			DrawLine(PricePane, 160, Close[160], 190, Close[190], Color.Green, LineStyle.Solid, 3);
+			DrawLine(PricePane, 191, Close[191], 221, Close[221], Color.Red, LineStyle.Solid, 3);
+			DrawLine(PricePane, 222, Close[222], 249, Close[249], Color.Green, LineStyle.Solid, 3);
+			
+			double duringEarning = (Close[35] - Close[7]) / Close[7] + (Close[97] - Close[66]) / Close[66] + (Close[159] - Close[129]) / Close[129] 
+				+ (Close[221] - Close[191]) / Close[191];
+			duringEarning = 100 * duringEarning;
+			
+			double notEarning = (Close[66] - Close[36]) / Close[36] + (Close[128] - Close[98]) / Close[98] + (Close[190] - Close[160]) / Close[160] + (Close[249] - Close[222]) / Close[222];
+			notEarning = 100 * notEarning;
+				
+			DrawLabel(PricePane, "During Earnings " + duringEarning.ToString());
+			DrawLabel(PricePane, "Not Earnings " + notEarning.ToString());
+			DrawLabel(PricePane, "All year " + (100 * (Close[249] - Close[1]) / Close[1]).ToString());
+			
+			
+			for(int bar = timeFrame; bar &lt; Bars.Count; bar++) {
+				if(bar &gt;days &amp;&amp; Close[bar] &lt; smaYear[bar]) {
+					// Exit all positions
+					foreach(Position p in Positions) {
+						if (p.Active) {
+							SetContext(p.Symbol , true);
+
+							SellAtMarket( bar+1, p, "S&amp;P is below sma");
+							RestoreContext();
+
+						}
+					}
+					continue;
+				}
+				
+				if(Date[bar].Month != month) {
+					month =  Date[bar].Month;
+					List&lt;double&gt; percentageGained3M = new List&lt;double&gt;();
+					int [] order = new int[DataSetSymbols.Count];
+					
+					for(int ds = 0; ds &lt; DataSetSymbols.Count; ds++)
+					{
+						if(DataSetSymbols[ds]!= "SPY")
+						{
+			
+							SetContext(DataSetSymbols[ds], true);
+							order[ds] = ds;
+							double percentageGained = (100 * (Close[bar] - Close[bar - timeFrame])) / Close[bar];
+							percentageGained3M.Add(percentageGained);
+							RestoreContext();
+						}
+					}
+					
+					//Sort list and retain order for dataseries
+					for(int i = 1; i &lt; percentageGained3M.Count; i++)
+					{
+						int j = i;
+						while(j &gt; 0)
+						{
+							if(percentageGained3M[j-1] &lt; percentageGained3M[j])
+							{
+								double temp = percentageGained3M[j - 1];
+								int temp2 = order[j - 1];
+								percentageGained3M[j - 1] = percentageGained3M[j];
+								order[j - 1] = order[j];
+								percentageGained3M[j] = temp;
+								order[j] = temp2;
+								j--;
+							}
+							else
+								break;
+						}
+					}
+					
+					// Re-balance sectors every month
+					string sector1 = DataSetSymbols[order[0]];
+					string sector2 = DataSetSymbols[order[1]];
+					string sector3 = DataSetSymbols[order[2]];
+					bool found1 = false;
+					bool found2 = false;
+					bool found3 = false;
+					
+					PrintDebug("In " + sector1 );
+					PrintDebug("In " + sector2);
+					PrintDebug("In " + sector3);
+					List&lt;Position&gt; positionsToClose = new List&lt;Position&gt;();
+					
+					foreach(Position p in Positions) {
+						if (p.Active)
+						{
+							if(p.Symbol == sector1) {
+								found1 = true;
+							} else if(p.Symbol == sector2) {
+								found2 = true;
+							} else if(p.Symbol == sector3) {
+								found3 = true;
+							}
+						
+							if(p.Symbol != sector1 &amp;&amp; p.Symbol != sector2 &amp;&amp; p.Symbol != sector3) {
+								PrintDebug("Out " + p.Symbol);
+								positionsToClose.Add(p);
+							}
+						}
+					}
+					
+					foreach(Position p in positionsToClose) {
+						SetContext(p.Symbol, true);
+						SellAtMarket(bar + 1, p, "Sector is no longer outperforming other sectors.");
+						RestoreContext();
+					}
+					
+					if(!found1) {
+						SetContext(sector1, true);
+						BuyAtMarket(bar + 1, "Top Performing Sector");
+						RestoreContext();
+					}
+					
+					if(!found2) {
+						SetContext(sector2, true);
+						BuyAtMarket(bar + 1, "Top Performing Sector");
+						RestoreContext();
+					}
+					
+					if(!found3) {
+						SetContext(sector3, true);
+						BuyAtMarket(bar + 1, "Top Performing Sector");
+						RestoreContext();
+					}
+					positionsToClose.Clear();
+					percentageGained3M.Clear();
+				}
+			
+			}
+		}
+	}
+}
+
+//					for(int i = 0; i &lt; percentageGained3M.Count; i++) {
+//						PrintDebug(order[i]);
+//						PrintDebug(percentageGained3M[i]);
+//					}</Code>
+  <Description />
+  <Author>Local</Author>
+  <CreationDate>2015-01-02T23:45:20.4569853-08:00</CreationDate>
+  <LastModified>2015-06-21T01:14:18.0761665-07:00</LastModified>
+  <StrategyType>Script</StrategyType>
+  <AccountNumber />
+  <NetworkDrivePath />
+  <ParameterValues />
+  <DataSetName>Sector ETF's</DataSetName>
+  <Symbol />
+  <DataScale>
+    <Scale>Daily</Scale>
+    <BarInterval>0</BarInterval>
+  </DataScale>
+  <PositionSize>
+    <Mode>PctEquity</Mode>
+    <RawProfitDollarSize>5000</RawProfitDollarSize>
+    <RawProfitShareSize>100</RawProfitShareSize>
+    <StartingCapital>1000000</StartingCapital>
+    <DollarSize>5000</DollarSize>
+    <ShareSize>100</ShareSize>
+    <PctSize>32</PctSize>
+    <RiskSize>3</RiskSize>
+    <SimuScriptName />
+    <PosSizerConfig />
+    <MarginFactor>1</MarginFactor>
+    <OverrideShareSize>0</OverrideShareSize>
+  </PositionSize>
+  <DataRange>
+    <Range>RecentYears</Range>
+    <StartDate>2004-01-01T00:00:00</StartDate>
+    <EndDate>2004-12-31T00:00:00</EndDate>
+    <FixedBars>500</FixedBars>
+    <RecentValue>1</RecentValue>
+    <IsStreaming>false</IsStreaming>
+  </DataRange>
+  <Indicators>AAAAAAAAAAA=</Indicators>
+  <Rules />
+  <SinglePosition>true</SinglePosition>
+  <References />
+  <PreferredValues />
+  <UsePreferredValues>false</UsePreferredValues>
+  <StartingEquity>100000</StartingEquity>
+  <MarginFactor>1</MarginFactor>
+  <PanelSize />
+  <Origin />
+  <CombinedStrategyChildren />
+</Strategy>

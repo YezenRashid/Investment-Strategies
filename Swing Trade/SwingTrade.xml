@@ -1,0 +1,255 @@
+<?xml version="1.0"?>
+<Strategy xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <Name>SwingTrade</Name>
+  <ID>17c458e1-d1c3-4774-88fd-1635d5bd0381</ID>
+  <Code>using System;
+using System.Collections.Generic;
+using System.Text;
+using System.Drawing;
+using WealthLab;
+using WealthLab.Indicators;
+using Community.Components;
+
+namespace WealthLab.Strategies
+{
+	public class MyStrategy : WealthScript
+	{
+		//Pushed indicator StrategyParameter statements
+		private StrategyParameter slider1;
+		private StrategyParameter slider2;
+		private StrategyParameter slider3;
+		public MyStrategy()
+		{
+			//Pushed indicator CreateParameter statements
+			slider1 = CreateParameter("EMA_Period_1",10,2,200,20);
+			slider2 = CreateParameter("EMA_Period_2",30,2,200,20);
+			slider3 = CreateParameter("WilliamsR_Period_3",3,2,200,20);
+
+		}
+		protected override void Execute()
+		{
+			SMA sma10 = SMA.Series(Close, 10);
+			EMA ema30 = EMA.Series(Close, 30,EMACalculation.Modern);
+			WilliamsR wlm = WilliamsR.Series(Bars, 3);
+			
+			BBandLower  LB = BBandLower.Series(Close,29, 2.5);
+			BBandUpper  UB = BBandUpper.Series(Close,29,2.5);
+			SolidBrush shadowBrush = new SolidBrush(Color.FromArgb(10, Color.FromArgb(102,0,0,255)));
+			PlotSeriesFillBand(PricePane, LB,UB,Color.FromArgb(255,176,196,222), shadowBrush,LineStyle.Solid,2);
+			
+			DateTime nextReportDate = new DateTime(2010, 1, 1);
+			FundamentalItem fi = GetFundamentalItem (Bars.Count - 1, Bars.Symbol, "earnings per share");
+			
+			bool crossOver = false;
+			bool pullback  = false;
+			bool crossUnder = false;
+			bool pullup  = false;
+
+			
+			for (int bar = 30 ; bar &lt; Bars.Count; bar++)
+			{
+				SetContext( "SPY", true );
+
+				bool  signal = sma10[bar] &gt;  ema30[bar];
+				bool  goLong = false;
+				bool  goShort = false;
+				if (signal &amp;&amp; wlm[bar] &lt; 20)
+				{
+					goLong = true;
+				}
+				if (!signal &amp;&amp; wlm[bar] &gt; 80)
+				{
+					crossOver = false;
+					goShort = true;
+				}
+				
+				RestoreContext();
+			
+				//goLong = true;
+				if (!IsLastPositionActive)
+				{
+					if (goLong)
+					{
+					
+						if ( CrossOver( bar, sma10, ema30))
+						{
+							crossOver = true;
+							pullback = false;
+							crossUnder = false;
+							pullup = false;
+							continue;
+						}
+				
+						if (crossOver &amp;&amp; Close[bar] &lt; sma10[bar] &amp;&amp; pullback == false)
+						{
+							pullback = true;
+						}
+					
+						if (pullback  &amp;&amp; Close[bar] &gt; sma10[bar] )
+						{
+							//	DrawCircle( PricePane, 10, bar, High[bar], Color.Green, Color.DarkGreen, WealthLab.LineStyle.Solid, 2, true );
+							//	crossOver = false;
+							pullback = false;
+							BuyAtMarket(bar+1, "SMA 10 is above EMA 30 and pull back is done ");		
+						}
+					}
+					else
+						if (goShort)
+					{
+						if ( CrossUnder( bar, sma10, ema30))
+						{
+							crossUnder = true;
+							pullup = false;
+							crossOver = false;
+							pullback = false;
+							continue;
+						}
+				
+						if (crossUnder &amp;&amp; Close[bar] &gt; sma10[bar] &amp;&amp; pullup == false)
+						{
+							pullup = true;
+						}
+					
+						if (pullup  &amp;&amp; Close[bar] &lt; sma10[bar] )
+						{
+							//	DrawCircle( PricePane, 10, bar, High[bar], Color.Green, Color.DarkGreen, WealthLab.LineStyle.Solid, 2, true );
+							//	crossOver = false;
+							pullup = false;
+							ShortAtMarket(bar+1, "SMA 10 is below EMA 30 and pull back is done ");		
+						}						
+						//	DrawCircle( PricePane, 10, bar, High[bar], Color.Blue, Color.Black, WealthLab.LineStyle.Solid, 2, true );
+					}
+				}
+				else
+				{
+					if ( LastActivePosition.PositionType == PositionType.Long)
+					{
+						double b = LB[bar];
+						if (
+							LastActivePosition.EntryPrice &gt; Close[bar] &amp;&amp; Close[bar] &lt; b
+							&amp;&amp; bar &gt;= LastActivePosition.EntryBar
+							)
+						{
+							SellAtMarket(bar + 1, LastActivePosition, "stop lose");
+							crossOver = false;
+							pullback = false;
+							continue;
+						}
+					
+						if (Bars.IntradayBarNumber(bar) == 0 &amp;&amp; EarningsDate.InWindow(this, bar, "earnings per share", 365, 0))
+						{
+							//DrawLabel(PricePane, "Next Earnings: " + Date[bar].ToString());
+							PrintDebug(Date[bar].ToString());
+						}
+						
+						if (  Date[bar].Day &gt;  (LastActivePosition.EntryDate.Day + 4) &amp;&amp;  Bars.IsLastBarOfDay(bar) ) 
+						{
+							SellAtMarket(bar + 1, LastActivePosition, "Close on 5th day");
+							crossOver = false;
+							pullback = false;
+							continue;
+						}
+						else
+						
+							if (CrossUnder( bar, sma10, ema30))
+						{
+							SellAtMarket(bar + 1, LastActivePosition, "Take profit");
+							crossOver = false;
+							pullback = false;
+							continue;
+						}
+					}
+					else if  ( LastActivePosition.PositionType == PositionType.Short)
+					{
+						double b = UB[bar];
+						if (
+							LastActivePosition.EntryPrice &lt; Close[bar] &amp;&amp; Close[bar] &gt; b
+							&amp;&amp; bar &gt;= LastActivePosition.EntryBar
+							)
+						{
+							CoverAtMarket(bar + 1, LastActivePosition, "Short stop lose");
+							crossUnder = false;
+							pullup = false;
+							continue;
+						}
+					
+
+						if (  Date[bar].Day &gt;  (LastActivePosition.EntryDate.Day + 4) &amp;&amp;  Bars.IsLastBarOfDay(bar) ) 
+						{
+							CoverAtMarket(bar + 1, LastActivePosition, "Close on 5th day");
+							crossUnder = false;
+							pullup = false;
+							continue;
+						}
+						else
+						
+							if (CrossOver( bar, sma10, ema30))
+						{
+							CoverAtMarket(bar + 1, LastActivePosition, "Take profit");
+							crossUnder = false;
+							pullup = false;
+							continue;
+						}
+
+					}
+				}
+			}
+			//Pushed indicator ChartPane statements
+			ChartPane paneWilliamsR1 = CreatePane(40,true,true);
+
+			//Pushed indicator PlotSeries statements
+			PlotSeries(PricePane,sma10,Color.DarkGreen,LineStyle.Solid,2);
+			PlotSeries(PricePane,ema30,Color.Blue,LineStyle.Solid,2);
+			PlotSeries(paneWilliamsR1,wlm,Color.OliveDrab,LineStyle.Solid,2);
+
+		}
+	}
+}</Code>
+  <Description />
+  <Author>Local</Author>
+  <CreationDate>2014-12-27T19:04:09.4904192-08:00</CreationDate>
+  <LastModified>2015-01-02T23:44:45.0713391-08:00</LastModified>
+  <StrategyType>Script</StrategyType>
+  <AccountNumber />
+  <NetworkDrivePath />
+  <ParameterValues />
+  <DataSetName>Dow 30</DataSetName>
+  <Symbol>AAPL</Symbol>
+  <DataScale>
+    <Scale>Minute</Scale>
+    <BarInterval>30</BarInterval>
+  </DataScale>
+  <PositionSize>
+    <Mode>PctEquity</Mode>
+    <RawProfitDollarSize>5000</RawProfitDollarSize>
+    <RawProfitShareSize>100</RawProfitShareSize>
+    <StartingCapital>100000</StartingCapital>
+    <DollarSize>5000</DollarSize>
+    <ShareSize>100</ShareSize>
+    <PctSize>98</PctSize>
+    <RiskSize>3</RiskSize>
+    <SimuScriptName />
+    <PosSizerConfig />
+    <MarginFactor>1</MarginFactor>
+    <OverrideShareSize>0</OverrideShareSize>
+  </PositionSize>
+  <DataRange>
+    <Range>DateRange</Range>
+    <StartDate>2014-01-01T00:00:00</StartDate>
+    <EndDate>2014-12-31T00:00:00</EndDate>
+    <FixedBars>500</FixedBars>
+    <RecentValue>1</RecentValue>
+    <IsStreaming>false</IsStreaming>
+  </DataRange>
+  <Indicators>AAAAAAAAAAA=</Indicators>
+  <Rules />
+  <SinglePosition>true</SinglePosition>
+  <References />
+  <PreferredValues />
+  <UsePreferredValues>false</UsePreferredValues>
+  <StartingEquity>100000</StartingEquity>
+  <MarginFactor>1</MarginFactor>
+  <PanelSize />
+  <Origin />
+  <CombinedStrategyChildren />
+</Strategy>
